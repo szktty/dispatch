@@ -18,7 +18,7 @@ end
 
 module Block : sig
 
-  type t = unit -> unit
+  type t
 
   type flag =
     | Barrier
@@ -28,7 +28,7 @@ module Block : sig
     | Inherit_qos_class
     | Enforce_qos_class
 
-  val create : ?flags:flag list -> f:t -> t
+  val create : ?flags:flag list -> f:(unit -> unit) -> unit -> t
 
 end
 

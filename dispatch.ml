@@ -20,6 +20,57 @@ module Primitive = struct
 
   end
 
+  module Block_literal = struct
+
+    module Flags = struct
+
+      type t = int32
+
+      let t = int32_t
+
+      let lshift n m = Signed.Int32.(Infix.(lsl) (of_int n) m)
+
+      let block_has_copy_dispose = lshift 1 25
+
+      let block_has_ctor = lshift 1 26
+
+      let block_is_global = lshift 1 28
+
+      let block_has_stret = lshift 1 29
+
+      let block_has_signature = lshift 1 30
+
+    end
+
+    type s
+
+    type t = s structure
+
+    let t : t typ = structure "block_literal"
+
+    let isa = field t "isa" (ptr void)
+
+    let flags = field t "flags" int32_t
+
+    let reserved = field t "reserved" int32_t
+
+    let invoke = field t "invoke" (funptr (ptr void @-> returning void))
+
+    let descriptor = field t "descriptor" (ptr void)
+
+    let () = seal t
+
+    let create ~(f:(unit -> unit)) () =
+      let f = fun _ -> f () in (* unit ptr -> unit *)
+      let str = make t in
+      setf str isa null;
+      setf str flags (Signed.Int32.of_int 0);
+      setf str invoke f;
+      setf str descriptor null;
+      str
+
+  end
+
   module Block = struct
 
     module Flags = struct
@@ -37,9 +88,9 @@ module Primitive = struct
 
     end
 
-    type t = (unit typ -> unit typ) fn
+    type t = Block_literal.t ptr
 
-    let t = funptr (void @-> returning void)
+    let t : t typ = ptr Block_literal.t
 
     let create =
       foreign "dispatch_block_create" (Flags.t @-> t @-> returning t)
@@ -69,7 +120,7 @@ end
 
 module Block = struct
 
-  type t = unit -> unit
+  type t = Primitive.Block.t
 
   type flag =
     | Barrier
@@ -89,13 +140,14 @@ module Block = struct
     | Inherit_qos_class -> inherit_qos_class
     | Enforce_qos_class -> enforce_qos_class
 
-  let create ?(flags=[]) ~f =
+  let create ?(flags=[]) ~(f:(unit -> unit)) () =
+    let lit = addr @@ Primitive.Block_literal.create ~f () in
     let prim_flags = List.fold_left flags
         ~init:(ULong.of_int 0)
         ~f:(fun accu flag ->
             ULong.add accu (value_of_flag flag))
     in
-    Primitive.Block.create prim_flags f
+    Primitive.Block.create prim_flags lit
 
 end
 
