@@ -3,9 +3,22 @@ open Ctypes
 open Unsigned
 open Foreign
 
-(* TODO: struct Block_literal_1 for C blocks *)
-
 module Primitive = struct
+
+  module Runtime = struct
+
+    let class_ = ptr void
+
+    let lookup_class =
+      foreign "objc_lookUpClass" (string @-> returning class_)
+
+    let class_name =
+      foreign "class_getName" (class_ @-> returning string)
+
+    let malloc_block_class =
+      lookup_class "__NSMallocBlock__"
+
+  end
 
   module Time = struct
 
@@ -63,7 +76,7 @@ module Primitive = struct
     let create ~(f:(unit -> unit)) () =
       let f = fun _ -> f () in (* unit ptr -> unit *)
       let str = make t in
-      setf str isa null;
+      setf str isa Runtime.malloc_block_class;
       setf str flags (Signed.Int32.of_int 0);
       setf str invoke f;
       setf str descriptor null;
@@ -153,3 +166,11 @@ end
 
 module Queue = struct
 end
+
+let () =
+  let _c = Primitive.Runtime.lookup_class "__NSMallocBlock__" in
+  Printf.printf "ok\n";
+  let name = Primitive.Runtime.class_name _c in
+  Printf.printf "class name = %s\n" name;
+  ()
+
