@@ -121,7 +121,7 @@ OCAMLFLAGS += -g -thread -w -4-9-40-42-44-45
 # OCAMLOPTFLAGS +=
 
 # /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
-OCAML_LINK_FLAGS += -cclib "-F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks -framework System"
+OCAML_LINK_FLAGS += -cclib "-F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks -framework System -framework Foundation"
 
 # OCAML_BYTE_LINK_FLAGS +=
 # OCAML_NATIVE_LINK_FLAGS +=
