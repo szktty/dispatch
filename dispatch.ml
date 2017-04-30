@@ -1,5 +1,6 @@
 open Core.Std
 open Ctypes
+open Signed
 open Unsigned
 open Foreign
 
@@ -17,6 +18,20 @@ module Primitive = struct
 
     let malloc_block_class =
       lookup_class "__NSMallocBlock__"
+
+  end
+
+  module Object = struct
+
+    type t = unit ptr
+
+    let t : t typ = ptr void
+
+    let retain =
+      foreign "dispatch_retain" (t @-> returning void)
+
+    let release =
+      foreign "dispatch_release" (t @-> returning void)
 
   end
 
@@ -41,7 +56,7 @@ module Primitive = struct
 
       let t = int32_t
 
-      let lshift n m = Signed.Int32.(Infix.(lsl) (of_int n) m)
+      let lshift n m = Int32.(Infix.(lsl) (of_int n) m)
 
       let block_has_copy_dispose = lshift 1 25
 
@@ -78,6 +93,7 @@ module Primitive = struct
       let str = make t in
       setf str isa Runtime.malloc_block_class;
       setf str flags (Signed.Int32.of_int 0);
+      setf str flags (Signed.Int32.of_int (-1023410174));
       setf str invoke f;
       setf str descriptor null;
       str
@@ -107,6 +123,59 @@ module Primitive = struct
 
     let create =
       foreign "dispatch_block_create" (Flags.t @-> t @-> returning t)
+
+  end
+
+  module Function = struct
+
+    (* TODO: type t = *)
+    type t = (unit ptr -> unit)
+    let t : t typ = funptr (ptr void @-> returning void)
+
+  end
+
+  module Queue = struct
+
+    module Priority = struct
+
+      type t = long
+
+      let t : t typ = long
+
+      let high = Long.of_int 2
+      let default = Long.of_int 0
+      let low = Long.of_int (-2)
+      let background = Long.of_int 0x8000 (* int16 min *)
+
+    end
+
+    module Attr = struct
+    end
+
+    module Qos = struct
+    end
+
+    type t = unit ptr
+
+    let t : t typ = ptr void
+
+    let global_queue =
+      foreign "dispatch_get_global_queue" (long @-> ulong @-> returning t)
+
+    let create =
+      foreign "dispatch_queue_create" (string @-> ptr void @-> returning t)
+
+    let label =
+      foreign "dispatch_queue_get_label" (t @-> returning string)
+
+    let async =
+      foreign "dispatch_async" (t @-> Block.t @-> returning void)
+
+    let async_f =
+      foreign "dispatch_async_f" (t @-> ptr void @-> Function.t @-> returning void)
+
+    let main =
+      foreign "dispatch_main" (void @-> returning void)
 
   end
 
@@ -167,10 +236,71 @@ end
 module Queue = struct
 end
 
+let test_f _ =
+  ()
+
 let () =
+  (*
+  let ctrl = Gc.get () in
+  ctrl.minor_heap_size <- 512000;
+  ctrl.major_heap_increment <- 100;
+   *)
+
   let _c = Primitive.Runtime.lookup_class "__NSMallocBlock__" in
   Printf.printf "ok\n";
   let name = Primitive.Runtime.class_name _c in
   Printf.printf "class name = %s\n" name;
+
+  let queue = Primitive.Queue.global_queue Primitive.Queue.Priority.high ULong.zero in
+  let label = Primitive.Queue.label queue in
+  Printf.printf "queue label = %s\n" label;
+
+  (*
+  let block = Block.create ~f:(fun () -> Printf.printf "block executed!\n") () in
+  Primitive.Queue.async queue block;
+   *)
+
+  Printf.printf "begin create queue\n";
+  flush_all ();
+  let workers = ref [] in
+  for i = 0 to 20 do
+    Printf.printf "create queue %d\n" i;
+    flush_all ();
+    let queue = Primitive.Queue.create "test" null in
+    workers := queue :: !workers
+  done;
+  Printf.printf "ready queue\n";
+  flush_all ();
+
+  (*Primitive.Queue.async_f queue null (fun _ -> Printf.printf "async_f ok\n");*)
+  for i = 0 to 10000 do
+    (*
+    Printf.printf "i = %d\n" i;
+    flush_all ();
+     *)
+    List.iter !workers
+      ~f:(fun worker ->
+          (*Printf.printf "queue %s async_f\n" (Primitive.Queue.label worker);*)
+          (*Primitive.Queue.async_f worker null (fun _ -> ());*)
+          (*Primitive.Queue.async_f worker null (fun _ -> ());*)
+          Primitive.Queue.async_f worker null
+            (fun _ ->
+               for i = 0 to 1000 do
+                 ()
+               done;
+
+               ());
+          (*Primitive.Queue.async_f queue null (fun _ -> Printf.printf "async_f ok\n");*)
+          ignore @@ Unix.nanosleep 0.0001;
+        );
+    (*Primitive.Queue.async_f queue null (fun _ -> Printf.printf "async_f ok\n");*)
+    (*Primitive.Queue.async_f queue null (fun _ -> ());*)
+    (*ignore @@ Unix.nanosleep 0.001;*)
+  done;
+
+  flush_all ();
+  Printf.printf "begin loop\n";
+  flush_all ();
+  Primitive.Queue.main ();
   ()
 
