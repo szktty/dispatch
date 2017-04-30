@@ -155,7 +155,7 @@ FILES[] =
 	main
 
 #
-PROGRAM = dispatch
+PROGRAM = ocaml-gcd
 # OCAML_LIBS +=
 # OCAML_CLIBS +=
 # OCAML_OTHER_LIBS +=
