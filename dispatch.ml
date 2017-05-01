@@ -128,8 +128,8 @@ module Primitive = struct
 
   module Function = struct
 
-    (* TODO: type t = *)
     type t = (unit ptr -> unit)
+
     let t : t typ = funptr (ptr void @-> returning void)
 
   end
@@ -239,13 +239,10 @@ end
 let test_f _ =
   ()
 
-let () =
-  (*
-  let ctrl = Gc.get () in
-  ctrl.minor_heap_size <- 512000;
-  ctrl.major_heap_increment <- 100;
-   *)
+let rec fib n =
+  if n < 2 then n else fib (n - 2) + fib (n - 1)
 
+let () =
   let _c = Primitive.Runtime.lookup_class "__NSMallocBlock__" in
   Printf.printf "ok\n";
   let name = Primitive.Runtime.class_name _c in
@@ -254,11 +251,6 @@ let () =
   let queue = Primitive.Queue.global_queue Primitive.Queue.Priority.high ULong.zero in
   let label = Primitive.Queue.label queue in
   Printf.printf "queue label = %s\n" label;
-
-  (*
-  let block = Block.create ~f:(fun () -> Printf.printf "block executed!\n") () in
-  Primitive.Queue.async queue block;
-   *)
 
   Printf.printf "begin create queue\n";
   flush_all ();
@@ -272,30 +264,12 @@ let () =
   Printf.printf "ready queue\n";
   flush_all ();
 
-  (*Primitive.Queue.async_f queue null (fun _ -> Printf.printf "async_f ok\n");*)
   for i = 0 to 10000 do
-    (*
-    Printf.printf "i = %d\n" i;
-    flush_all ();
-     *)
     List.iter !workers
       ~f:(fun worker ->
-          (*Printf.printf "queue %s async_f\n" (Primitive.Queue.label worker);*)
-          (*Primitive.Queue.async_f worker null (fun _ -> ());*)
-          (*Primitive.Queue.async_f worker null (fun _ -> ());*)
-          Primitive.Queue.async_f worker null
-            (fun _ ->
-               for i = 0 to 1000 do
-                 ()
-               done;
-
-               ());
-          (*Primitive.Queue.async_f queue null (fun _ -> Printf.printf "async_f ok\n");*)
-          ignore @@ Unix.nanosleep 0.0001;
+          Primitive.Queue.async_f worker null (fun _ -> ignore @@ fib 38);
+          ignore @@ Unix.nanosleep 0.01;
         );
-    (*Primitive.Queue.async_f queue null (fun _ -> Printf.printf "async_f ok\n");*)
-    (*Primitive.Queue.async_f queue null (fun _ -> ());*)
-    (*ignore @@ Unix.nanosleep 0.001;*)
   done;
 
   flush_all ();
