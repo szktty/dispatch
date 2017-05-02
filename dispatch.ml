@@ -4,6 +4,8 @@ open Signed
 open Unsigned
 open Foreign
 
+type never_returns = unit
+
 module Primitive = struct
 
   module Runtime = struct
@@ -50,6 +52,9 @@ module Primitive = struct
     type t = (unit ptr -> unit)
 
     let t : t typ = funptr (ptr void @-> returning void)
+
+    (*let of_f (f:(unit -> unit)) = (fun (_:unit ptr) -> f ())*)
+    let of_f f = f
 
   end
 
@@ -110,7 +115,7 @@ module Primitive = struct
 
     let once_f =
       foreign "dispatch_once_f"
-        (Once.t @-> t @-> ptr void @-> Function.t @-> returning void)
+        (Once.t @-> ptr void @-> Function.t @-> returning void)
 
     let main =
       foreign "dispatch_main" (void @-> returning void)
@@ -144,21 +149,27 @@ module Queue = struct
 
   module P = Primitive.Queue
 
-  let current = P.current_queue ()
+  module F = Primitive.Function
 
-  let global = P.global_queue P.Priority.high ULong.zero
+  type t = P.t
+
+  type work = (unit ptr -> unit)
+
+  let current () = P.current_queue ()
+
+  let global () = P.global_queue P.Priority.high ULong.zero
 
   let create label = P.create label null
 
   let label queue = P.label queue
 
-  let async queue ~f = P.async_f queue null f
+  let async queue ~f = P.async_f queue null @@ F.of_f f
 
-  let sync queue ~f = P.sync_f queue null f
+  let sync queue ~f = P.sync_f queue null @@ F.of_f f
 
-  let after queue ~f ~time = P.after_f time queue null f
+  let after queue ~f ~time = P.after_f time queue null @@ F.of_f f
 
-  let once queue ~f = P.once_f queue null f
+  let once queue ~f = P.once_f queue null @@ F.of_f f
 
   let forever () = P.main ()
 
@@ -171,7 +182,7 @@ let rec fib n =
   if n < 2 then n else fib (n - 2) + fib (n - 1)
 
 let () =
-  let label = Queue.label Queue.global in
+  let label = Queue.label @@ Queue.global () in
   Printf.printf "queue label = %s\n" label;
 
   Printf.printf "begin create queue\n";
