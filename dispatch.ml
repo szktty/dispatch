@@ -74,6 +74,14 @@ module Primitive = struct
     module Qos = struct
     end
 
+    module Once = struct
+
+      type t = long
+
+      let t : t typ = long
+
+    end
+
     type t = unit ptr
 
     let t : t typ = ptr void
@@ -89,6 +97,17 @@ module Primitive = struct
 
     let async_f =
       foreign "dispatch_async_f" (t @-> ptr void @-> Function.t @-> returning void)
+
+    let sync_f =
+      foreign "dispatch_sync_f" (t @-> ptr void @-> Function.t @-> returning void)
+
+    let after_f =
+      foreign "dispatch_after_f"
+        (Time.t @-> t @-> ptr void @-> Function.t @-> returning void)
+
+    let once_f =
+      foreign "dispatch_once_f"
+        (Once.t @-> t @-> ptr void @-> Function.t @-> returning void)
 
     let main =
       foreign "dispatch_main" (void @-> returning void)
