@@ -86,6 +86,9 @@ module Primitive = struct
 
     let t : t typ = ptr void
 
+    let current_queue =
+      foreign "dispatch_get_current_queue" (void @-> returning t)
+
     let global_queue =
       foreign "dispatch_get_global_queue" (long @-> ulong @-> returning t)
 
@@ -136,6 +139,27 @@ module Time = struct
 end
 
 module Queue = struct
+
+  module P = Primitive.Queue
+
+  let current = P.current_queue ()
+
+  let global = P.global_queue P.Priority.high ULong.zero
+
+  let create label = P.create label null
+
+  let label queue = P.label queue
+
+  let async queue ~f = P.async_f queue null f
+
+  let sync queue ~f = P.sync_f queue null f
+
+  let after queue ~f ~time = P.after_f time queue null f
+
+  let once queue ~f = P.once_f queue null f
+
+  let forever () = P.main ()
+
 end
 
 let test_f _ =
@@ -145,8 +169,7 @@ let rec fib n =
   if n < 2 then n else fib (n - 2) + fib (n - 1)
 
 let () =
-  let queue = Primitive.Queue.global_queue Primitive.Queue.Priority.high ULong.zero in
-  let label = Primitive.Queue.label queue in
+  let label = Queue.label Queue.global in
   Printf.printf "queue label = %s\n" label;
 
   Printf.printf "begin create queue\n";
@@ -155,7 +178,7 @@ let () =
   for i = 0 to 20 do
     Printf.printf "create queue %d\n" i;
     flush_all ();
-    let queue = Primitive.Queue.create "test" null in
+    let queue = Queue.create "test" in
     workers := queue :: !workers
   done;
   Printf.printf "ready queue\n";
@@ -164,7 +187,7 @@ let () =
   for i = 0 to 10000 do
     List.iter !workers
       ~f:(fun worker ->
-          Primitive.Queue.async_f worker null (fun _ -> ignore @@ fib 38);
+          Queue.async worker ~f:(fun _ -> ignore @@ fib 38);
           ignore @@ Unix.nanosleep 0.01;
         );
   done;
@@ -172,6 +195,6 @@ let () =
   flush_all ();
   Printf.printf "begin loop\n";
   flush_all ();
-  Primitive.Queue.main ();
+  Queue.forever ();
   ()
 
