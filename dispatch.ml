@@ -40,7 +40,7 @@ module Primitive = struct
 
     let now = UInt64.of_int 0
 
-    let dispatch_time =
+    let create =
       foreign "dispatch_time" (t @-> int64_t @-> returning t)
 
   end
@@ -121,12 +121,14 @@ end
 
 module Time = struct
 
-  type t = Primitive.Time.t
+  module P = Primitive.Time
 
-  let now = Primitive.Time.now
+  type t = P.t
+
+  let now = P.now
 
   let create when_ delta =
-    Primitive.Time.dispatch_time when_ delta
+    P.create when_ delta
 
   let of_int = UInt64.of_int
 
