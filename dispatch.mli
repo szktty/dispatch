@@ -16,28 +16,6 @@ module Time : sig
 
 end
 
-module Block : sig
-
-  type t
-
-  type flag =
-    | Barrier
-    | Detached
-    | Assign_current
-    | No_qos_class
-    | Inherit_qos_class
-    | Enforce_qos_class
-
-  val create : ?flags:flag list -> f:(unit -> unit) -> unit -> t
-
-end
-
 module Queue : sig
-
-  (*
-  type t
-
-  val async : t -> Block.t -> unit
-   *)
 
 end
